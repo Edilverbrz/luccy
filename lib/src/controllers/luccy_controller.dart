@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/expense.dart';
+import '../domain/budget.dart';
+import '../domain/expense_repository.dart';
+import '../application/add_expense.dart';
+import '../infra/in_memory_expense_repository.dart';
 
 enum AuthState { login, register, authenticated }
 enum SetupState { notStarted, inProgress, completed }
 
 class LuccyController extends ChangeNotifier {
+  final ExpenseRepository repository;
+
+  LuccyController({ExpenseRepository? repository}) : repository = repository ?? InMemoryExpenseRepository();
   // Auth / Setup
   AuthState authState = AuthState.login;
   SetupState setupState = SetupState.notStarted;
@@ -20,41 +27,17 @@ class LuccyController extends ChangeNotifier {
   String activeTab = 'dashboard';
 
   // --- Calculations ---
-  double get totalFixedExpenses =>
-      fixedExpenses.fold(0.0, (sum, item) => sum + item.amount);
+  double get totalFixedExpenses => Budget(income: income, fixedExpenses: fixedExpenses, variableExpenses: variableExpenses).totalFixedExpenses();
 
-  double get freeBudget => income - totalFixedExpenses;
+  double get freeBudget => Budget(income: income, fixedExpenses: fixedExpenses, variableExpenses: variableExpenses).freeBudget();
 
-  double get totalSpent =>
-      variableExpenses.fold(0.0, (sum, item) => sum + item.amount);
+  double get totalSpent => Budget(income: income, fixedExpenses: fixedExpenses, variableExpenses: variableExpenses).totalSpent();
 
   double get currentAvailable => freeBudget - totalSpent;
 
-  double get percentageSpent => freeBudget > 0 ? (totalSpent / freeBudget) * 100 : 0;
+  double get percentageSpent => Budget(income: income, fixedExpenses: fixedExpenses, variableExpenses: variableExpenses).percentageSpent();
 
-  LuccyStatus getLuccyStatus() {
-    final p = percentageSpent;
-    if (p >= 100) {
-      return LuccyStatus(
-          message:
-              '¡ALERTA CRÍTICA! Has superado tu límite mensual. Detén los gastos no esenciales inmediatamente.',
-          level: StatusLevel.critical);
-    } else if (p >= 80) {
-      return LuccyStatus(
-          message:
-              '¡Peligro! Te queda muy poco presupuesto. Tienes un alto riesgo financiero este mes.',
-          level: StatusLevel.danger);
-    } else if (p >= 50) {
-      return LuccyStatus(
-          message:
-              'Atención: Has gastado más de la mitad de tu presupuesto libre. Modera tus próximos gastos.',
-          level: StatusLevel.attention);
-    } else {
-      return LuccyStatus(
-          message: '¡Vas por excelente camino! Tus finanzas están bajo control y saludables.',
-          level: StatusLevel.healthy);
-    }
-  }
+  LuccyStatus getLuccyStatus() => Budget(income: income, fixedExpenses: fixedExpenses, variableExpenses: variableExpenses).getStatus();
 
   // --- Actions ---
   void submitAuth({String? name}) {
@@ -105,13 +88,16 @@ class LuccyController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addVariableExpense(double amount, String desc) {
+  Future<void> addVariableExpense(double amount, String desc) async {
     final e = VariableExpense(
       id: DateTime.now().millisecondsSinceEpoch,
       amount: amount,
       description: desc,
       date: DateTime.now().toIso8601String(),
     );
+    final uc = AddExpense(repository);
+    await uc.call(e);
+    // keep local cache in sync
     variableExpenses.insert(0, e);
     notifyListeners();
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'src/controllers/luccy_controller.dart';
+import 'src/infra/shared_prefs_expense_repository.dart';
 import 'src/models/expense.dart';
 
 void main() {
@@ -13,7 +14,7 @@ class LuccyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => LuccyController(),
+      create: (_) => LuccyController(repository: SharedPrefsExpenseRepository()),
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Luccy',
@@ -88,7 +89,8 @@ class _AuthPageState extends State<AuthPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F6),
-      body: Padding(
+      resizeToAvoidBottomInset: true,
+      body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
         child: Container(
           decoration: BoxDecoration(
