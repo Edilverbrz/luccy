@@ -11,10 +11,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'stable'
+          channel: 'stable'
+          flutter-version: '3.x' # Fuerza la compatibilidad con Flutter 3 evitando el bug de detección
+          cache: true            # Guarda en caché las descargas para que el pipeline corra en segundos
+
       - name: Install dependencies
         run: flutter pub get
+        
       - name: Run tests
-        run: flutter test --coverage
+        run: flutter test
